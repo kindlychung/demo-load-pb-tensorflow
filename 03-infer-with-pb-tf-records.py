@@ -19,6 +19,8 @@ def getImageBatch(filenames, batch_size, capacity, min_after_dequeue):
     filenameQ = tf.train.string_input_producer(filenames, num_epochs=None)
     recordReader = tf.TFRecordReader()
     key, fullExample = recordReader.read(filenameQ)
+    key_val = sess.run(key)
+    print(key_val)
     features = tf.parse_single_example(
         fullExample,
         features={
@@ -53,13 +55,13 @@ with gfile.FastGFile("./output_graph_510.pb", 'rb') as f:
     graph_def = tf.GraphDef()
     graph_def.ParseFromString(f.read())
     with tf.Session() as sess:
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         sess.graph.as_default()
         tf.import_graph_def(graph_def)
         tf.global_variables_initializer().run()
         image_tensor, label_batch = getImageBatch(glob.glob("./images/tf_records/validation*"), 1, 10, 2)
         image_tensor = tf.reshape(image_tensor, (1, WIDTH, HEIGHT, NCHANNEL))
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         image_data = sess.run(image_tensor)
         # print(image_data.shape)
         # softmax_tensor = sess.graph.get_tensor_by_name('import/final_result:0')

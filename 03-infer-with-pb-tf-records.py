@@ -1,4 +1,5 @@
 import tensorflow as tf
+import os
 import sys
 from tensorflow.python.platform import gfile
 import numpy as np
@@ -6,21 +7,20 @@ from scipy.misc import imread
 import glob
 
 
-with open("./labels_510.txt") as f:
+with open("./images/labels.txt") as f:
     lines = list(f.readlines())
     labels = [str(w).replace("\n", "") for w in lines]
 
+print(labels)
 NCLASS = len(labels)
 NCHANNEL = 3
 WIDTH = 224
 HEIGHT = 224
 
-def getImageBatch(filenames, batch_size, capacity, min_after_dequeue):
+def getImageBatch(filenames, batch_size, capacity, min_after_dequeue, enqueue_many=True):
     filenameQ = tf.train.string_input_producer(filenames, num_epochs=None)
     recordReader = tf.TFRecordReader()
     key, fullExample = recordReader.read(filenameQ)
-    key_val = sess.run(key)
-    print(key_val)
     features = tf.parse_single_example(
         fullExample,
         features={
@@ -44,9 +44,7 @@ def getImageBatch(filenames, batch_size, capacity, min_after_dequeue):
     imageBatch, labelBatch = tf.train.shuffle_batch(
         [image, label], batch_size=batch_size,
         capacity=capacity,
-        min_after_dequeue=min_after_dequeue)
-    print(imageBatch.shape)
-    print(labelBatch.shape)
+        min_after_dequeue=min_after_dequeue, enqueue_many=enqueue_many)
     return imageBatch, labelBatch
 
 
@@ -58,12 +56,17 @@ with gfile.FastGFile("./output_graph_510.pb", 'rb') as f:
         sess.graph.as_default()
         tf.import_graph_def(graph_def)
         tf.global_variables_initializer().run()
-        image_tensor, label_batch = getImageBatch(glob.glob("./images/tf_records/validation*"), 1, 10, 2)
-        image_tensor = tf.reshape(image_tensor, (1, WIDTH, HEIGHT, NCHANNEL))
+        cwd = os.getcwd()
+        file_list = list(
+            map(lambda x: os.path.join(cwd, x), glob.glob("images/tf_records/validation*"))
+        )
+        print(file_list)
+        image_tensor, label_batch = getImageBatch(file_list, 2, 4, 2, enqueue_many=False)
+        sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         image_data = sess.run(image_tensor)
-        # print(image_data.shape)
+        print(image_data.shape)
         # softmax_tensor = sess.graph.get_tensor_by_name('import/final_result:0')
         # predictions = sess.run(softmax_tensor, {'import/input:0': image_data})
         # predictions = np.squeeze(predictions)

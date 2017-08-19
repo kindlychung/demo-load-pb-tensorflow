@@ -80,7 +80,7 @@ with tf.Session() as persisted_sess:
                 human_string = batch_reader.labels[node_id]
                 score = predictions[node_id]
                 print('%s (score = %.5f)' % (human_string, score))
-            answer = labels[top_k[0]]
+            answer = batch_reader.labels[top_k[0]]
             return answer
         for index in range(len(labels)):
             img = data[index]
